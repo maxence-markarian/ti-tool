@@ -1,13 +1,19 @@
 from flask import Flask, render_template, url_for, flash, redirect
 from titool.config import Config
 from titool.forms import RegistrationForm, LoginForm
+from titool.db import db
 import titool.email_reader
 
+config = Config()
 
 app = Flask(__name__)
 
+app.config["SECRET_KEY"] = config.secret_key
+app.config["SQLALCHEMY_DATABASE_URI"] = config.database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = "False"
 
-app.config["SECRET_KEY"] = "BU~!jmZS.:xH^z!1"
+
+db.init_app(app)
 
 
 posts = [
@@ -55,9 +61,13 @@ def login():
 
 
 def start():
-    config = Config()
     titool.email_reader.test_scrape_email(titool.email_reader.read_email(config.mail_username, config.mail_password))
     app.run(debug=True, use_reloader=False)
+
+
+def sync_db():
+    db.drop_all()
+    db.create_all()
 
 
 if __name__ == "__main__":

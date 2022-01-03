@@ -66,5 +66,8 @@ def scrape_email(body: str) -> List[EmailItem]:
     titles = soup.find_all('h3')
     for title in titles:
         link = title.find('a')
-        articles.append(EmailItem(link['href'], title.get_text()))
+        title_text = title.get_text()
+        if title_text is None or link is None:
+            continue
+        articles.append(EmailItem(link['href'], title_text))
     return articles
