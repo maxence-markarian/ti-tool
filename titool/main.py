@@ -1,7 +1,10 @@
+from uuid import uuid4
+
+import bcrypt
 from flask import Flask, render_template, url_for, flash, redirect
 from titool.config import Config
 from titool.forms import RegistrationForm, LoginForm
-from titool.db import db
+from titool.db import db, User
 import titool.email_reader
 
 config = Config()
@@ -43,6 +46,12 @@ def about():
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
+        password_bytes = form.password.data.encode("UTF-8")
+        password_hash = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+        user_id = uuid4()
+        user = User(id=user_id, username=form.username.data, password=password_hash)
+        db.session.add(user)
+        db.session.commit()
         flash(f"Account created for {form.username.data}!", "success")
         return redirect(url_for("home"))
     return render_template("register.html", title="Register", form=form)
@@ -56,7 +65,7 @@ def login():
             flash("You have been logged in!", "success")
             return redirect(url_for("home"))
         else:
-            flash("Login Unsuccessful. Please check username and password", "danger")
+            flash("Login unsuccessful. Please check username and password", "danger")
     return render_template("login.html", title="Login", form=form)
 
 
@@ -66,6 +75,8 @@ def start():
 
 
 def sync_db():
+    db.init_app(app)
+    app.app_context().push()
     db.drop_all()
     db.create_all()
 

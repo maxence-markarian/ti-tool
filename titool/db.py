@@ -1,13 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.dialects.postgresql import UUID
 
 db = SQLAlchemy()
 
 
 class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
     username = db.Column(db.String(18), unique=True, nullable=False)
-    # 60 characters long hash for the password
-    password = db.Column(db.String(60), nullable=False)
+    password = db.Column(db.LargeBinary, nullable=False)
 
     def __repr__(self):
         return f"User('{self.username}')"
