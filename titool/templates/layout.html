@@ -30,8 +30,18 @@
             </div>
             <!-- Navbar Right Side -->
             <div class="navbar-nav">
-              <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
-              <a class="nav-item nav-link" href="{{ url_for('register') }}">Register</a>
+                {% if current_user.is_authenticated %}
+                    <span>Connected: </span>
+                    {{ current_user.username }}
+                    <form method="POST" action="/logout">
+                        <div class="form-group">
+                            <input type="submit" value="Logout" />
+                        </div>
+                    </form>
+                {% else %}
+                    <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
+                    <a class="nav-item nav-link" href="{{ url_for('register') }}">Register</a>
+                {% endif %}
             </div>
           </div>
         </div>

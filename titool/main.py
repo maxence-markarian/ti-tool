@@ -1,11 +1,16 @@
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 import bcrypt
+import flask_login
 from flask import Flask, render_template, url_for, flash, redirect
+from flask_login import login_user, LoginManager, logout_user
+from sqlalchemy import select
+
 from titool.config import Config
 from titool.forms import RegistrationForm, LoginForm
 from titool.db import db, User
 import titool.email_reader
+from titool.visitor import Visitor
 
 config = Config()
 
@@ -15,8 +20,19 @@ app.config["SECRET_KEY"] = config.secret_key
 app.config["SQLALCHEMY_DATABASE_URI"] = config.database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = "False"
 
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 db.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id is None:
+        return None
+    query = select(User).where(User.id == UUID(user_id))
+    db_user: User = db.session.execute(query).scalars().one_or_none()
+    return Visitor(db_user.id, db_user.username)
 
 
 posts = [
@@ -34,6 +50,7 @@ posts = [
 @app.route("/")
 @app.route("/home")
 def home():
+    # print(flask_login.current_user)
     return render_template("home.html", posts=posts)
 
 
@@ -61,12 +78,27 @@ def register():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        if form.username.data == "admin" and form.password.data == "password":
-            flash("You have been logged in!", "success")
-            return redirect(url_for("home"))
-        else:
-            flash("Login unsuccessful. Please check username and password", "danger")
+        query = select(User).where(User.username == form.username.data)
+        db_user: User = db.session.execute(query).scalars().one_or_none()
+        if db_user is None:
+            flash("Login unsuccessful. Unknown username", "danger")
+            return render_template("login.html", title="Login", form=form)
+        password_bytes = form.password.data.encode("UTF-8")
+        if not bcrypt.checkpw(password_bytes, db_user.password):
+            flash("Login unsuccesful. Wrong password", "danger")
+            return render_template("login.html", title="Login", form=form)
+        visitor = Visitor(db_user.id, db_user.username)
+        login_user(visitor, remember=form.remember.data)
+        flash("You have been logged in!", "success")
+        return redirect(url_for("home"))
     return render_template("login.html", title="Login", form=form)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    logout_user()
+    flash("You have been logged out!", "success")
+    return redirect(url_for("home"))
 
 
 def start():
