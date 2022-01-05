@@ -29,3 +29,17 @@ class Favorites(db.Model):
     article_id = db.Column(UUID(as_uuid=True), db.ForeignKey("article.id"))
     creation_date = db.Column(db.DateTime(timezone=True), nullable=False)
     __table_args__ = (db.PrimaryKeyConstraint("user_id", "article_id"),)
+
+    def __repr__(self):
+        return f"Favorites('{self.user_id}', '{self.article_id}', '{self.creation_date}')"
+
+
+class Shared(db.Model):
+    user_id_sender = db.Column(UUID(as_uuid=True), db.ForeignKey("user.id"))
+    user_id_target = db.Column(UUID(as_uuid=True), db.ForeignKey("user.id"))
+    article_id = db.Column(UUID(as_uuid=True), db.ForeignKey("article.id"))
+    creation_date = db.Column(db.DateTime(timezone=True), nullable=False)
+    __table_args__ = (db.PrimaryKeyConstraint("user_id_sender", "user_id_target", "article_id"),)
+
+    def __repr__(self):
+        return f"Shared('{self.user_id_sender}', '{self.user_id_target}', '{self.article_id}', '{self.creation_date}')"

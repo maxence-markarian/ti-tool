@@ -67,9 +67,10 @@ def scrape_email(body: str) -> List[EmailItem]:
     soup = BeautifulSoup(body, 'html.parser')
     titles = soup.find_all('h3')
     for title in titles:
+        author = title.findNext('div').get_text()
         link = title.find('a')
         title_text = title.get_text()
         if title_text is None or link is None:
             continue
-        articles.append(EmailItem(link['href'], title_text, "TODO author"))
+        articles.append(EmailItem(link['href'], title_text, author))
     return articles

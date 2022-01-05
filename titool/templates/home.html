@@ -1,21 +1,28 @@
 {% extends "layout.html" %}
 {% block content %}
     {% for article in articles %}
-            <article class="media content-section">
+        <article class="media content-section">
+            <div class="media-body">
+            <div class="article-metadata">
+                <span class="mr-2">{{ article.author }}</span>
+            </div>
+            <h2><a class="article-title" href="{{ article.url }}">{{ article.title }}</a></h2>
                 {% if current_user.is_authenticated %}
-                    <form method="POST" action="/addtomyfavorites">
-                        {{ form.hidden_tag("csrf_token") }}
-                        {{ form.submit(class="btn btn-outline-info") }}
-                        {{ form.article(value=article.id) }}
-                    </form>
+                    <div class="article-actions">
+                        <form method="POST" action="/sharearticle">
+                            {{ shared_form.hidden_tag("csrf_token") }}
+                            {{ shared_form.user_target() }}
+                            {{ shared_form.submit(class="btn btn-outline-info") }}
+                            {{ shared_form.article(value=article.id) }}
+                        </form>
+                        <form method="POST" action="/addtomyfavorites">
+                            {{ favorites_form.hidden_tag("csrf_token") }}
+                            {{ favorites_form.submit(class="btn btn-outline-info") }}
+                            {{ favorites_form.article(value=article.id) }}
+                        </form>
+                    </div>
                 {% endif %}
-              <div class="media-body">
-                <div class="article-metadata">
-                  <a class="mr-2" href="#">{{ article.author }}</a>
-                </div>
-                <h2><a class="article-title" href="#">{{ article.title }}</a></h2>
-                <p class="article-content">{{ article.url }}</p>
-              </div>
-            </article>
+            </div>
+        </article>
     {% endfor %}
 {% endblock content %}

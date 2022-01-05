@@ -1,6 +1,10 @@
+from typing import List
+
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, HiddenField, SelectField
 from wtforms.validators import DataRequired, Length, EqualTo
+
+from titool.db import User
 
 
 class RegistrationForm(FlaskForm):
@@ -25,3 +29,15 @@ class LoginForm(FlaskForm):
 class AddToMyFavorites(FlaskForm):
     article = HiddenField("Article")
     submit = SubmitField("Add")
+
+
+class ShareArticle(FlaskForm):
+    article = HiddenField("Article")
+    user_target = SelectField("Target", coerce=str)
+    submit = SubmitField("Share")
+
+    def set_user_target(self, list_users: List[User]):
+        choices = []
+        for user in list_users:
+            choices.append((user.id, user.username))
+        self.user_target.choices = choices

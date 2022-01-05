@@ -9,8 +9,8 @@ from sqlalchemy import select
 
 from titool.config import Config
 from titool.email_reader import EmailItem, read_email, scrape_email
-from titool.forms import RegistrationForm, LoginForm, AddToMyFavorites
-from titool.db import db, User, Article, Favorites
+from titool.forms import RegistrationForm, LoginForm, AddToMyFavorites, ShareArticle
+from titool.db import db, User, Article, Favorites, Shared
 from titool.visitor import Visitor
 from sqlalchemy.dialects.postgresql import insert
 
@@ -42,9 +42,13 @@ def load_user(user_id):
 @app.route("/")
 @app.route("/home")
 def home():
-    form = AddToMyFavorites()
+    favorites_form = AddToMyFavorites()
+    shared_form = ShareArticle()
     articles = get_articles()
-    return render_template("home.html", articles=articles, form=form)
+    users = get_all_users()
+    shared_form.set_user_target(users)
+    return render_template("home.html", articles=articles, users=users,
+                           favorites_form=favorites_form, shared_form=shared_form)
 
 
 @app.route("/about")
@@ -96,7 +100,9 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return render_template("profile.html", title="Profile")
+    articles_by_user = get_articles_by_user(current_user.user_id)
+    print(articles_by_user)
+    return render_template("profile.html", favorites=articles_by_user, title="Profile")
 
 
 @app.route("/addtomyfavorites", methods=["POST"])
@@ -105,8 +111,27 @@ def add_to_my_favorites():
     form = AddToMyFavorites()
     if form.validate_on_submit():
         insert_into_favorites(current_user.user_id, UUID(form.article.data))
-        flash("The article has been added!")
+        flash("The article has been added!", "success")
     return redirect(url_for("home"))
+
+
+@app.route("/sharearticle", methods=["POST"])
+@login_required
+def share_article():
+    form = ShareArticle()
+    form.set_user_target(get_all_users())
+    if form.validate_on_submit() and form.user_target.data != "":
+        insert_into_shared(current_user.user_id, UUID(form.user_target.data), UUID(form.article.data))
+        flash("The article has been sent!", "success")
+    return redirect(url_for("home"))
+
+
+def insert_into_shared(user_id: UUID, user_id_target: UUID, article_id: UUID):
+    insertion = insert(Shared).values(user_id_sender=user_id, user_id_target=user_id_target,
+                                      article_id=article_id,
+                                      creation_date=datetime.datetime.utcnow()).on_conflict_do_nothing()
+    db.session.execute(insertion)
+    db.session.commit()
 
 
 def insert_into_favorites(user_id: UUID, article_id: UUID):
@@ -122,7 +147,14 @@ def get_articles() -> List[Article]:
 
 
 def get_articles_by_user(user_id: UUID) -> List[Article]:
-    return []
+    join_articles = db.session.query(Article).join(Favorites).filter(Article.id == Favorites.article_id)
+    articles_by_user = join_articles.filter_by(user_id=user_id).all()
+    return list(articles_by_user)
+
+
+def get_all_users() -> List[User]:
+    users = User.query.all()
+    return list(users)
 
 
 def update_articles():

@@ -32,12 +32,9 @@
             <!-- Navbar Right Side -->
             <div class="navbar-nav">
                 {% if current_user.is_authenticated %}
-                    <span>Connected: </span>
-                    {{ current_user.username }}
+                <span class="nav-item nav-link">{{ current_user.username }}</span>
                     <form method="POST" action="/logout">
-                        <div class="form-group">
-                            <input type="submit" value="Logout" />
-                        </div>
+                            <input type="submit" class="btn btn-light" value="Logout" />
                     </form>
                 {% else %}
                     <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
