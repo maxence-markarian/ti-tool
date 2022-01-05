@@ -1,13 +1,20 @@
 {% extends "layout.html" %}
 {% block content %}
-    {% for post in posts %}
+    {% for article in articles %}
             <article class="media content-section">
+                {% if current_user.is_authenticated %}
+                    <form method="POST" action="/addtomyfavorites">
+                        {{ form.hidden_tag("csrf_token") }}
+                        {{ form.submit(class="btn btn-outline-info") }}
+                        {{ form.article(value=article.id) }}
+                    </form>
+                {% endif %}
               <div class="media-body">
                 <div class="article-metadata">
-                  <a class="mr-2" href="#">{{ post.author }}</a>
+                  <a class="mr-2" href="#">{{ article.author }}</a>
                 </div>
-                <h2><a class="article-title" href="#">{{ post.title }}</a></h2>
-                <p class="article-content">{{ post.content }}</p>
+                <h2><a class="article-title" href="#">{{ article.title }}</a></h2>
+                <p class="article-content">{{ article.url }}</p>
               </div>
             </article>
     {% endfor %}

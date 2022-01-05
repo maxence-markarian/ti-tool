@@ -1,16 +1,18 @@
+import datetime
+from typing import List
 from uuid import uuid4, UUID
 
 import bcrypt
-import flask_login
 from flask import Flask, render_template, url_for, flash, redirect
-from flask_login import login_user, LoginManager, logout_user
+from flask_login import login_user, LoginManager, logout_user, login_required, current_user
 from sqlalchemy import select
 
 from titool.config import Config
-from titool.forms import RegistrationForm, LoginForm
-from titool.db import db, User
-import titool.email_reader
+from titool.email_reader import EmailItem, read_email, scrape_email
+from titool.forms import RegistrationForm, LoginForm, AddToMyFavorites
+from titool.db import db, User, Article, Favorites
 from titool.visitor import Visitor
+from sqlalchemy.dialects.postgresql import insert
 
 config = Config()
 
@@ -32,26 +34,17 @@ def load_user(user_id):
         return None
     query = select(User).where(User.id == UUID(user_id))
     db_user: User = db.session.execute(query).scalars().one_or_none()
+    if db_user is None:
+        return None
     return Visitor(db_user.id, db_user.username)
-
-
-posts = [
-    {
-        "author": "dummy1",
-        "title": "title1"
-    },
-    {
-        "author": "dummy2",
-        "title": "title2"
-    }
-]
 
 
 @app.route("/")
 @app.route("/home")
 def home():
-    # print(flask_login.current_user)
-    return render_template("home.html", posts=posts)
+    form = AddToMyFavorites()
+    articles = get_articles()
+    return render_template("home.html", articles=articles, form=form)
 
 
 @app.route("/about")
@@ -101,16 +94,68 @@ def logout():
     return redirect(url_for("home"))
 
 
+@app.route("/profile")
+def profile():
+    return render_template("profile.html", title="Profile")
+
+
+@app.route("/addtomyfavorites", methods=["POST"])
+@login_required
+def add_to_my_favorites():
+    form = AddToMyFavorites()
+    if form.validate_on_submit():
+        insert_into_favorites(current_user.user_id, UUID(form.article.data))
+        flash("The article has been added!")
+    return redirect(url_for("home"))
+
+
+def insert_into_favorites(user_id: UUID, article_id: UUID):
+    insertion = insert(Favorites).values(user_id=user_id, article_id=article_id,
+                creation_date=datetime.datetime.utcnow()).on_conflict_do_nothing()
+    db.session.execute(insertion)
+    db.session.commit()
+
+
+def get_articles() -> List[Article]:
+    articles = Article.query.all()
+    return list(articles)
+
+
+def get_articles_by_user(user_id: UUID) -> List[Article]:
+    return []
+
+
+def update_articles():
+    emails = read_email(config.mail_username, config.mail_password)
+    articles: List[EmailItem] = []
+    for body in emails:
+        email_items = scrape_email(body)
+        for item in email_items:
+            articles.append(item)
+    insert_articles(articles)
+
+
+def insert_articles(articles: List[EmailItem]):
+    for article in articles:
+        article_id = uuid4()
+        # article = Article(id=article_id, title=article.title, url=article.url,
+        #                  author=article.author, insertion_date=datetime.datetime.utcnow())
+        insertion = insert(Article).values(id=article_id, title=article.title, url=article.url,
+                    author=article.author, insertion_date=datetime.datetime.utcnow()).on_conflict_do_nothing()
+        db.session.execute(insertion)
+        db.session.commit()
+
+
 def start():
-    titool.email_reader.test_scrape_email(titool.email_reader.read_email(config.mail_username, config.mail_password))
+    with app.app_context():
+        update_articles()
     app.run(debug=True, use_reloader=False)
 
 
 def sync_db():
-    db.init_app(app)
-    app.app_context().push()
-    db.drop_all()
-    db.create_all()
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
 
 
 if __name__ == "__main__":
