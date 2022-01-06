@@ -101,8 +101,10 @@ def logout():
 @app.route("/profile")
 def profile():
     articles_by_user = get_articles_by_user(current_user.user_id)
-    print(articles_by_user)
-    return render_template("profile.html", favorites=articles_by_user, title="Profile")
+    shared_articles = get_shared_articles(current_user.user_id)
+    # print(shared_articles)
+    return render_template("profile.html", favorites=articles_by_user,
+                           shared_articles=shared_articles, title="Profile")
 
 
 @app.route("/addtomyfavorites", methods=["POST"])
@@ -150,6 +152,12 @@ def get_articles_by_user(user_id: UUID) -> List[Article]:
     join_articles = db.session.query(Article).join(Favorites).filter(Article.id == Favorites.article_id)
     articles_by_user = join_articles.filter_by(user_id=user_id).all()
     return list(articles_by_user)
+
+
+def get_shared_articles(user_id: UUID) -> List[Article]:
+    join_articles = db.session.query(Article).join(Shared).filter(Article.id == Shared.article_id)
+    shared_articles = join_articles.filter_by(user_id_target=user_id).all()
+    return list(shared_articles)
 
 
 def get_all_users() -> List[User]:
