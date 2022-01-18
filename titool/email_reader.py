@@ -34,7 +34,6 @@ def read_email(mail_username: str, mail_password: str, emails_limit=2) -> List[s
                 if isinstance(sender, bytes):
                     # Decode to a string
                     sender = sender.decode(encoding)
-                # print("Sender: ", sender)
                 matched = re.search("Alertes\sGoogle\sScholar", sender)
                 if matched:
                     # Get the email body
@@ -61,6 +60,9 @@ class EmailItem:
 
 
 def scrape_email(body: str) -> List[EmailItem]:
+    """
+    Takes the HTML body of an email and returns a list of articles
+    """
     articles = []
     # BeautifulSoup object is created, HTML data is passed to the constructor
     # The second option specifies the parser

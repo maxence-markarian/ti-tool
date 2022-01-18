@@ -6,10 +6,12 @@ import bcrypt
 from flask import Flask, render_template, url_for, flash, redirect
 from flask_login import login_user, LoginManager, logout_user, login_required, current_user
 from sqlalchemy import select
+from sqlalchemy import delete
 
 from titool.config import Config
 from titool.email_reader import EmailItem, read_email, scrape_email
-from titool.forms import RegistrationForm, LoginForm, AddToMyFavorites, ShareArticle
+from titool.forms import RegistrationForm, LoginForm, AddToMyFavorites, ShareArticle, \
+    DeleteFromMyFavorites, DeleteFromMyShared
 from titool.db import db, User, Article, Favorites, Shared
 from titool.visitor import Visitor
 from sqlalchemy.dialects.postgresql import insert
@@ -99,12 +101,15 @@ def logout():
 
 
 @app.route("/profile")
+@login_required
 def profile():
     articles_by_user = get_articles_by_user(current_user.user_id)
     shared_articles = get_shared_articles(current_user.user_id)
-    # print(shared_articles)
+    deletion_favorite_form = DeleteFromMyFavorites()
+    deletion_shared_form = DeleteFromMyShared()
     return render_template("profile.html", favorites=articles_by_user,
-                           shared_articles=shared_articles, title="Profile")
+                           shared_articles=shared_articles, delete_my_favorite=deletion_favorite_form,
+                           delete_my_shared=deletion_shared_form, title="Profile")
 
 
 @app.route("/addtomyfavorites", methods=["POST"])
@@ -128,6 +133,26 @@ def share_article():
     return redirect(url_for("home"))
 
 
+@app.route("/deletefrommyfavorites", methods=["POST"])
+@login_required
+def delete_from_my_favorites():
+    form = DeleteFromMyFavorites()
+    if form.validate_on_submit():
+        delete_favorite(current_user.user_id, UUID(form.article.data))
+        flash("The article has been deleted!", "success")
+    return redirect(url_for("profile"))
+
+
+@app.route("/deletefrommyshared", methods=["POST"])
+@login_required
+def delete_from_my_shared():
+    form = DeleteFromMyShared()
+    if form.validate_on_submit():
+        delete_shared(current_user.user_id, UUID(form.article.data))
+        flash("The article has been deleted!", "success")
+    return redirect(url_for("profile"))
+
+
 def insert_into_shared(user_id: UUID, user_id_target: UUID, article_id: UUID):
     insertion = insert(Shared).values(user_id_sender=user_id, user_id_target=user_id_target,
                                       article_id=article_id,
@@ -140,6 +165,18 @@ def insert_into_favorites(user_id: UUID, article_id: UUID):
     insertion = insert(Favorites).values(user_id=user_id, article_id=article_id,
                 creation_date=datetime.datetime.utcnow()).on_conflict_do_nothing()
     db.session.execute(insertion)
+    db.session.commit()
+
+
+def delete_favorite(user_id: UUID, article_id: UUID) -> Article:
+    deletion = delete(Favorites).where(Favorites.user_id == user_id).where(Favorites.article_id == article_id)
+    db.session.execute(deletion)
+    db.session.commit()
+
+
+def delete_shared(user_id: UUID, article_id: UUID) -> Article:
+    deletion = delete(Shared).where(Shared.user_id_target == user_id).where(Shared.article_id == article_id)
+    db.session.execute(deletion)
     db.session.commit()
 
 
@@ -178,8 +215,6 @@ def update_articles():
 def insert_articles(articles: List[EmailItem]):
     for article in articles:
         article_id = uuid4()
-        # article = Article(id=article_id, title=article.title, url=article.url,
-        #                  author=article.author, insertion_date=datetime.datetime.utcnow())
         insertion = insert(Article).values(id=article_id, title=article.title, url=article.url,
                     author=article.author, insertion_date=datetime.datetime.utcnow()).on_conflict_do_nothing()
         db.session.execute(insertion)

@@ -41,3 +41,13 @@ class ShareArticle(FlaskForm):
         for user in list_users:
             choices.append((user.id, user.username))
         self.user_target.choices = choices
+
+
+class DeleteFromMyFavorites(FlaskForm):
+    article = HiddenField("Article")
+    submit = SubmitField("Delete")
+
+
+class DeleteFromMyShared(FlaskForm):
+    article = HiddenField("Article")
+    submit = SubmitField("Delete")

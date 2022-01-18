@@ -2,24 +2,42 @@
 {% block content %}
     <h1>My favorites</h1>
     {% for favorite in favorites %}
-            <article class="media content-section" id="favorites">
+            <article class="media content-section" class="favorites">
                 <div class="media-body">
                     <div class="article-metadata">
                         <a class="mr-2">{{ favorite.author }}</a>
                     </div>
                     <h2><a class="article-title" href="{{ favorite.url }}">{{ favorite.title }}</a></h2>
+                    {% if current_user.is_authenticated %}
+                        <div class="article-actions" class="delete-button">
+                            <form method="POST" action="/deletefrommyfavorites">
+                                {{ delete_my_favorite.hidden_tag("csrf_token") }}
+                                {{ delete_my_favorite.submit(class="btn btn-outline-info") }}
+                                {{ delete_my_favorite.article(value=favorite.id) }}
+                            </form>
+                        </div>
+                    {% endif %}
                 </div>
             </article>
     {% endfor %}
 
     <h1>Articles shared with you</h1>
     {% for article in shared_articles %}
-            <article class="media content-section" id="shared">
+            <article class="media content-section" class="shared">
                 <div class="media-body">
                     <div class="article-metadata">
                         <a class="mr-2">{{ article.author }}</a>
                     </div>
                     <h2><a class="article-title" href="{{ article.url }}">{{ article.title }}</a></h2>
+                    {% if current_user.is_authenticated %}
+                        <div class="article-actions" class="delete-button">
+                            <form method="POST" action="/deletefrommyshared">
+                                {{ delete_my_shared.hidden_tag("csrf_token") }}
+                                {{ delete_my_shared.submit(class="btn btn-outline-info") }}
+                                {{ delete_my_shared.article(value=article.id) }}
+                            </form>
+                        </div>
+                    {% endif %}
                 </div>
             </article>
     {% endfor %}
